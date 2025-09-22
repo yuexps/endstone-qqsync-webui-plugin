@@ -1,0 +1,21 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "endstone-qqsync-webui-plugin"
+version = "0.0.1"
+description = "QQsync WebUI 拓展"
+authors = [
+    { name = "yuexps", email = "yuexps@qq.com" },
+]
+requires-python = ">=3.11"
+
+[project.urls]
+Homepage = "https://github.com/yuexps/endstone-qqsync-webui-plugin"
+
+[project.entry-points."endstone"]
+qqsync-webui-plugin = "endstone_qqsync_webui_plugin.qqsync_webui_plugin:qqsyncwebui"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/endstone_qqsync_webui_plugin"]

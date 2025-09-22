@@ -1,0 +1,834 @@
+{% extends "base.html" %}
+
+{% block nav_dashboard %}nav-item-active{% endblock %}
+{% block page_title %}仪表盘{% endblock %}
+
+{% block content %}
+<div class="dashboard-grid" style="margin-top: 0; padding-top: 8px;">
+    <!-- 系统状态卡片 -->
+    <div class="card">
+        <div class="card-header">
+            <i class="icons10-windows"></i>
+            <h3>系统状态</h3>
+        </div>
+        <div class="card-content">
+            <div class="status-item">
+                <span class="status-label">插件状态:</span>
+                <span class="status-value status-{{ 'success' if plugin_status.enabled else 'error' }}">
+                    {{ '已启用' if plugin_status.enabled else '已禁用' }}
+                </span>
+            </div>
+            <div class="status-item">
+                <span class="status-label">QQ连接:</span>
+                <span class="status-value status-{{ 'success' if websocket_status.connected else 'error' }}">
+                    {{ '已连接' if websocket_status.connected else '断开连接' }}
+                </span>
+            </div>
+            <div class="status-item">
+                <span class="status-label">在线玩家:</span>
+                <span class="status-value">{{ online_players_count }}</span>
+            </div>
+            <div class="status-item">
+                <span class="status-label">绑定用户:</span>
+                <span class="status-value">{{ bound_users_count }}</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- 快速操作卡片 -->
+    <div class="card">
+        <div class="card-header">
+            <i class="win-icon win-icon-Play"></i>
+            <h3>快速操作</h3>
+        </div>
+        <div class="card-content">
+            <div class="action-buttons">
+                <button class="button button-primary" onclick="restartWebSocket()">
+                    <i class="icons10-refresh"></i>
+                    QQ重连
+                </button>
+                <button class="button button-accent" onclick="openConfig()">
+                    <i class="icons10-services"></i>
+                    配置管理
+                </button>
+                <button class="button button-secondary" onclick="window.location.href='/users'">
+                    <i class="icons10-user-settings"></i>
+                    用户管理
+                </button>
+                <button class="button button-secondary" onclick="window.location.href='https://qq.msfxp.top'">
+                    <i class="icons10-idea"></i>
+                    用户交流
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 消息统计卡片 -->
+    <div class="card">
+        <div class="card-header">
+            <i class="win-icon win-icon-BarChart4"></i>
+            <h3>消息统计</h3>
+            <div class="chart-controls">
+                <select id="chartPeriod" onchange="changeChartPeriod(this.value)">
+                    <option value="7">7天</option>
+                    <option value="30">30天</option>
+                    <option value="90">90天</option>
+                </select>
+            </div>
+        </div>
+        <div class="card-content">
+            <div class="chart-stats">
+                <div class="stat-mini">
+                    <span class="stat-label">今日消息:</span>
+                    <span class="stat-value" id="todayMessages">0</span>
+                </div>
+                <div class="stat-mini">
+                    <span class="stat-label">昨日消息:</span>
+                    <span class="stat-value" id="yesterdayMessages">0</span>
+                </div>
+                <div class="stat-mini">
+                    <span class="stat-label">周平均:</span>
+                    <span class="stat-value" id="weeklyAverage">0</span>
+                </div>
+            </div>
+            <div class="chart-container">
+                <canvas id="messageChart" width="400" height="200"></canvas>
+            </div>
+        </div>
+    </div>
+
+    <!-- 历史消息 -->
+    <div class="card card-wide">
+        <div class="card-header">
+            <i class="icons10-terminal"></i>
+            <h3>历史消息</h3>
+            <button class="button button-ghost" onclick="clearMessages()">
+                <i class="icons10-trash"></i>
+            </button>
+        </div>
+        <!-- 发送消息/命令表单 -->
+        <div class="send-message-form card" style="margin-top: 24px; box-shadow: var(--shadow-card);">
+            <div class="card-content">
+                <form id="sendMessageForm" onsubmit="return sendMessageOrCommand(event)">
+                    <div style="display: flex; gap: 12px; align-items: center; flex-wrap: wrap;">
+                        <input type="text" id="messageInput" placeholder="输入消息或命令..." class="input" style="flex:1; min-width:180px;" required>
+                        <select id="messageTarget" class="input" style="min-width:120px;">
+                            <option value="game">发送到游戏</option>
+                            <option value="qq">发送到QQ群</option>
+                            <option value="console">控制台命令</option>
+                        </select>
+                        <button type="submit" class="button button-primary" style="min-width:100px;">
+                            <i class="win-icon win-icon-Send"></i> 发送
+                        </button>
+                    </div>
+                </form>
+                <div class="form-tip" style="margin-top:10px; color:var(--text-secondary); font-size:12px;">
+                    <span><i class="win-icon win-icon-Info"></i> 可直接发送聊天消息到游戏/QQ群，或输入控制台命令（如 <code>list</code>、<code>say hello</code>）。</span>
+                </div>
+            </div>
+        </div>
+        <div class="card-content">
+            <div class="message-list" id="recentMessages">
+                {% if recent_messages and recent_messages|length > 0 %}
+                    {% for msg in recent_messages %}
+                    <div class="message-item">
+                        <div class="message-avatar">
+                            <div class="avatar-placeholder">{{ msg.sender[0]|upper }}</div>
+                        </div>
+                        <div class="message-content">
+                            <div class="message-header">
+                                <span class="message-sender">{{ msg.sender }}</span>
+                                <span class="message-time">{{ msg.timestamp|datetime('zh-CN') }}</span>
+                            </div>
+                            <div class="message-text">{{ msg.content }}</div>
+                        </div>
+                    </div>
+                    {% endfor %}
+                {% else %}
+                    <div class="message-item empty-message"><div class="message-content"><div class="message-text" style="text-align: center; color: var(--text-secondary); font-style: italic; padding: 20px 0;">暂无消息</div></div></div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+// 仪表板相关的JavaScript代码
+function restartWebSocket() {
+    fetch('/api/websocket/restart', { method: 'POST' })
+        .then(response => response.json())
+        .then(data => {
+            showNotification(data.success ? '重启成功' : '重启失败', data.success ? 'success' : 'error');
+        });
+}
+
+function openConfig() {
+    window.location.href = '/config';
+}
+
+function loadDashboardData() {
+    fetch('/api/dashboard')
+        .then(response => response.json())
+        .then(data => {
+            updateDashboardStats(data.stats);
+            updateSystemStatus(data);
+        })
+        .catch(error => {
+            console.error('加载仪表板数据失败:', error);
+        });
+}
+
+function loadRecentMessagesOnly() {
+    fetch('/api/dashboard')
+        .then(response => response.json())
+        .then(data => {
+            updateRecentMessages(data.recent_messages);
+        })
+        .catch(error => {
+            console.error('加载历史消息失败:', error);
+        });
+}
+
+function updateDashboardStats(stats) {
+    // 更新统计数字
+    const statsElements = {
+        'online-players': stats.online_players,
+        'bound-users': stats.bound_users,
+        'total-messages': stats.total_messages,
+        'uptime': stats.uptime
+    };
+    
+    Object.entries(statsElements).forEach(([id, value]) => {
+        const element = document.getElementById(id);
+        if (element) {
+            element.textContent = value;
+        }
+    });
+    
+    // 更新WebSocket状态指示器
+    const wsStatusElement = document.querySelector('.status-indicator');
+    if (wsStatusElement) {
+        wsStatusElement.className = `status-indicator ${stats.websocket_status === 'connected' ? 'status-online' : 'status-offline'}`;
+    }
+}
+
+function updateSystemStatus(data) {
+    // 更新配置状态
+    if (data.config_status) {
+        const configComplete = data.config_status.target_group_set && 
+                             data.config_status.bot_qq_set && 
+                             data.config_status.websocket_configured;
+        
+        const configStatusElement = document.querySelector('.config-status');
+        if (configStatusElement) {
+            configStatusElement.textContent = configComplete ? '已配置' : '待配置';
+            configStatusElement.className = `config-status ${configComplete ? 'status-ok' : 'status-warning'}`;
+        }
+    }
+    
+    // 更新在线玩家列表
+    if (data.online_players_list) {
+        const playersElement = document.querySelector('.online-players-list');
+        if (playersElement) {
+            playersElement.innerHTML = data.online_players_list.length > 0 
+                ? data.online_players_list.map(name => `<span class="player-tag">${name}</span>`).join('')
+                : '<span class="no-players">暂无在线玩家</span>';
+        }
+    }
+}
+
+function updateRecentMessages(messages) {
+    const container = document.getElementById('recentMessages');
+    if (!messages || messages.length === 0) {
+        container.innerHTML = '<div class="message-item empty-message"><div class="message-content"><div class="message-text" style="text-align: center; color: var(--text-secondary); font-style: italic; padding: 20px 0;">暂无消息</div></div></div>';
+        return;
+    }
+    
+    container.innerHTML = messages.map(msg => `
+        <div class="message-item">
+            <div class="message-avatar">
+                <div class="avatar-placeholder">${getInitials(msg.sender)}</div>
+            </div>
+            <div class="message-content">
+                <div class="message-header">
+                    <span class="message-sender">${escapeHtml(msg.sender)}</span>
+                    <span class="message-time">${formatMessageTime(msg.timestamp)}</span>
+                </div>
+                <div class="message-text">${formatMessageContent(msg.content)}</div>
+            </div>
+        </div>
+    `).join('');
+}
+
+function addRealtimeMessage(message) {
+    const container = document.getElementById('recentMessages');
+    
+    // 创建新消息元素
+    const messageElement = document.createElement('div');
+    messageElement.className = 'message-item';
+    messageElement.innerHTML = `
+        <div class="message-avatar">
+            <div class="avatar-placeholder">${getInitials(message.sender)}</div>
+        </div>
+        <div class="message-content">
+            <div class="message-header">
+                <span class="message-sender">${escapeHtml(message.sender)}</span>
+                <span class="message-time">${formatMessageTime(message.timestamp)}</span>
+            </div>
+            <div class="message-text">${formatMessageContent(message.content)}</div>
+        </div>
+    `;
+    
+    // 添加到容器顶部
+    container.insertBefore(messageElement, container.firstChild);
+    
+    // 限制消息数量，保持最新的50条
+    while (container.children.length > 50) {
+        container.removeChild(container.lastChild);
+    }
+}
+
+function formatMessageTime(timestamp) {
+    const date = new Date(timestamp * 1000);
+    const now = new Date();
+    const diff = now - date;
+    
+    if (diff < 60000) { // 1分钟内
+        return '刚刚';
+    } else if (diff < 3600000) { // 1小时内
+        return `${Math.floor(diff / 60000)}分钟前`;
+    } else if (diff < 86400000) { // 24小时内
+        return `${Math.floor(diff / 3600000)}小时前`;
+    } else {
+        return date.toLocaleString('zh-CN');
+    }
+}
+
+// HTML转义函数，防止XSS攻击
+function escapeHtml(text) {
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
+}
+
+// 获取用户名的首字母用于头像显示
+function getInitials(name) {
+    if (!name) return '?';
+    return name.charAt(0).toUpperCase();
+}
+
+// 格式化消息内容，支持简单的换行和链接识别
+function formatMessageContent(content) {
+    if (!content) return '';
+    
+    // 先转义HTML
+    let formatted = escapeHtml(content);
+    
+    // 处理换行
+    formatted = formatted.replace(/\n/g, '<br>');
+    
+    // 简单的URL识别和链接化
+    formatted = formatted.replace(
+        /(https?:\/\/[^\s]+)/g,
+        '<a href="$1" target="_blank" rel="noopener noreferrer" style="color: var(--primary-color); text-decoration: underline;">$1</a>'
+    );
+    
+    return formatted;
+}
+
+function clearMessages() {
+    const container = document.getElementById('recentMessages');
+    container.innerHTML = '<div class="message-item"><div class="message-content"><div class="message-text" style="text-align: center; color: var(--text-secondary); font-style: italic;">消息已清空</div></div></div>';
+}
+
+// 消息统计图表相关变量
+let messageChart = null;
+
+function loadMessageStats(days = 7) {
+    fetch(`/api/messages/stats?days=${days}`)
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                updateMessageChart(data.data);
+                updateChartStats(data.data);
+            } else {
+                console.error('获取消息统计失败:', data.error);
+            }
+        })
+        .catch(error => {
+            console.error('加载消息统计失败:', error);
+        });
+}
+
+function changeChartPeriod(days) {
+    loadMessageStats(parseInt(days));
+}
+
+function updateChartStats(stats) {
+    const dailyStats = stats.daily_stats || {};
+    const dates = Object.keys(dailyStats).sort();
+    
+    if (dates.length > 0) {
+        // 今日消息（最后一天）
+        const todayMessages = dailyStats[dates[dates.length - 1]] || 0;
+        document.getElementById('todayMessages').textContent = todayMessages;
+        
+        // 昨日消息（倒数第二天）
+        const yesterdayMessages = dates.length > 1 ? (dailyStats[dates[dates.length - 2]] || 0) : 0;
+        document.getElementById('yesterdayMessages').textContent = yesterdayMessages;
+        
+        // 周平均
+        const totalMessages = Object.values(dailyStats).reduce((sum, val) => sum + val, 0);
+        const weeklyAverage = dates.length > 0 ? Math.round(totalMessages / dates.length) : 0;
+        document.getElementById('weeklyAverage').textContent = weeklyAverage;
+    }
+}
+
+function updateMessageChart(stats) {
+    const ctx = document.getElementById('messageChart');
+    if (!ctx) return;
+    
+    // 如果图表已存在，先销毁
+    if (messageChart) {
+        messageChart.destroy();
+    }
+    
+    // 准备数据
+    const dailyLabels = Object.keys(stats.daily_stats || {});
+    const dailyData = Object.values(stats.daily_stats || {});
+    
+    // 创建混合图表：柱状图 + 折线图
+    messageChart = new Chart(ctx, {
+        type: 'bar',
+        data: {
+            labels: dailyLabels,
+            datasets: [{
+                type: 'bar',
+                label: '每日消息数',
+                data: dailyData,
+                backgroundColor: 'rgba(0, 120, 212, 0.6)',
+                borderColor: 'rgba(0, 120, 212, 1)',
+                borderWidth: 1,
+                yAxisID: 'y'
+            }, {
+                type: 'line',
+                label: '累计趋势',
+                data: dailyData.map((val, index) => 
+                    dailyData.slice(0, index + 1).reduce((sum, v) => sum + v, 0)
+                ),
+                borderColor: 'rgba(16, 124, 16, 1)',
+                backgroundColor: 'rgba(16, 124, 16, 0.1)',
+                borderWidth: 2,
+                fill: false,
+                yAxisID: 'y1'
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                title: {
+                    display: true,
+                    text: `消息统计 (总计: ${stats.total_messages || 0})`,
+                    font: {
+                        size: 14
+                    }
+                },
+                legend: {
+                    display: true,
+                    position: 'top'
+                },
+                tooltip: {
+                    mode: 'index',
+                    intersect: false
+                }
+            },
+            scales: {
+                x: {
+                    display: true,
+                    title: {
+                        display: true,
+                        text: '日期'
+                    }
+                },
+                y: {
+                    type: 'linear',
+                    display: true,
+                    position: 'left',
+                    title: {
+                        display: true,
+                        text: '消息数量'
+                    },
+                    beginAtZero: true
+                },
+                y1: {
+                    type: 'linear',
+                    display: true,
+                    position: 'right',
+                    title: {
+                        display: true,
+                        text: '累计数量'
+                    },
+                    beginAtZero: true,
+                    grid: {
+                        drawOnChartArea: false
+                    }
+                }
+            },
+            interaction: {
+                mode: 'index',
+                intersect: false
+            }
+        }
+    });
+}
+
+// 页面加载时初始化
+document.addEventListener('DOMContentLoaded', function() {
+    // 初始加载仪表盘数据和统计
+    loadDashboardData();
+    loadMessageStats();
+    // 每30秒刷新仪表盘和统计
+    setInterval(() => {
+        loadDashboardData();
+        loadMessageStats();
+    }, 30000);
+    // 每1秒只刷新历史消息
+    setInterval(() => {
+        loadRecentMessagesOnly();
+    }, 1000);
+});
+
+        
+// 发送消息/命令到后端
+function sendMessageOrCommand(event) {
+    event.preventDefault();
+    const input = document.getElementById('messageInput');
+    const target = document.getElementById('messageTarget').value;
+    const value = input.value.trim();
+    if (!value) return false;
+
+    let url = '';
+    let payload = {};
+    if (target === 'game') {
+        url = '/api/messages/send_game';
+        payload = { message: value };
+    } else if (target === 'qq') {
+        url = '/api/messages/send';
+        payload = { message: value };
+    } else if (target === 'console') {
+        url = '/api/messages/console';
+        payload = { command: value };
+    }
+
+    fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            showNotification('操作成功', 'success');
+            input.value = '';
+        } else {
+            showNotification(data.message || data.error || '操作失败', 'error');
+        }
+        // 刷新历史消息
+        loadDashboardData();
+    })
+    .catch(err => {
+        showNotification('请求失败', 'error');
+    });
+    return false;
+}
+
+</script>
+
+<style>
+/* 消息统计卡片样式 */
+.dashboard-grid {
+    margin-top: -16px !important;
+    padding-top: 0 !important;
+}
+.card, .card-wide, .send-message-form.card {
+    margin-top: 12px !important;
+}
+.chart-controls {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+}
+
+.chart-controls select {
+    padding: 4px 8px;
+    border: 1px solid var(--border-color);
+    border-radius: 4px;
+    background: var(--surface-color);
+    color: var(--text-primary);
+    font-size: 12px;
+}
+
+.chart-stats {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 16px;
+    padding: 12px;
+    background: rgba(0, 0, 0, 0.02);
+    border-radius: 6px;
+    border: 1px solid var(--border-color);
+}
+
+.stat-mini {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+}
+
+.stat-mini .stat-label {
+    font-size: 11px;
+    color: var(--text-secondary);
+    font-weight: 500;
+}
+
+.stat-mini .stat-value {
+    font-size: 16px;
+    font-weight: 700;
+    color: var(--text-primary);
+}
+
+.chart-container {
+    position: relative;
+    height: 200px;
+    width: 100%;
+}
+
+/* 图表悬停效果 */
+.chart-container:hover {
+    transform: scale(1.01);
+    transition: transform 0.2s ease;
+}
+
+/* 响应式设计 */
+@media (max-width: 768px) {
+    .chart-stats {
+        flex-direction: column;
+        gap: 12px;
+    }
+    
+    .stat-mini {
+        flex-direction: row;
+        justify-content: space-between;
+        width: 100%;
+    }
+    
+    .chart-container {
+        height: 180px;
+    }
+}
+
+/* 消息列表样式 */
+.message-list {
+    height: calc(5 * 64px + 4 * 12px); /* 5条消息高度+4个间隔 */
+    min-height: 0;
+    max-height: none;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+.message-item {
+    min-height: 64px;
+}
+
+.message-item {
+    display: flex;
+    gap: 12px;
+    padding: 12px;
+    background: var(--surface-color);
+    border-radius: 8px;
+    border: 1px solid var(--border-color);
+    transition: all 0.2s ease;
+}
+
+.message-item:hover {
+    background: rgba(0, 0, 0, 0.02);
+    border-color: var(--primary-color);
+}
+
+.message-avatar {
+    flex-shrink: 0;
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    overflow: hidden;
+    background: var(--primary-color);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    font-size: 16px;
+}
+
+.avatar-placeholder {
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(135deg, var(--primary-color), var(--accent-color));
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    font-size: 16px;
+}
+
+.message-content {
+    flex: 1;
+    min-width: 0;
+}
+
+.message-header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 4px;
+}
+
+.message-sender {
+    font-weight: 600;
+    color: var(--text-primary);
+    font-size: 14px;
+}
+
+.message-time {
+    font-size: 12px;
+    color: var(--text-secondary);
+}
+
+.message-text {
+    color: var(--text-primary);
+    line-height: 1.4;
+    word-wrap: break-word;
+    word-break: break-word;
+}
+
+/* 消息列表滚动条样式 */
+.message-list::-webkit-scrollbar {
+    width: 6px;
+}
+
+.message-list::-webkit-scrollbar-track {
+    background: rgba(0, 0, 0, 0.05);
+    border-radius: 3px;
+}
+
+.message-list::-webkit-scrollbar-thumb {
+    background: var(--border-color);
+    border-radius: 3px;
+}
+
+.message-list::-webkit-scrollbar-thumb:hover {
+    background: var(--text-secondary);
+}
+
+/* 空状态消息样式 */
+.message-item.empty-message {
+    justify-content: center;
+    background: rgba(0, 0, 0, 0.01);
+    border: 1px dashed var(--border-color);
+}
+
+.message-item.empty-message:hover {
+    background: rgba(0, 0, 0, 0.01);
+    border-color: var(--border-color);
+}
+
+/* 响应式消息列表 */
+@media (max-width: 768px) {
+    .message-list {
+        max-height: 300px;
+        gap: 8px;
+    }
+    
+    .message-item {
+        padding: 10px;
+        gap: 10px;
+    }
+    
+    .message-avatar {
+        width: 36px;
+        height: 36px;
+        font-size: 14px;
+    }
+    
+    .message-sender {
+        font-size: 13px;
+    }
+    
+    .message-time {
+        font-size: 11px;
+    }
+    
+    .message-text {
+        font-size: 14px;
+    }
+}
+
+/* 发送消息/命令表单美化 */
+.send-message-form.card {
+    margin-top: 24px;
+    border-radius: 10px;
+    box-shadow: var(--shadow-card);
+    background: var(--surface-color);
+    border: 1px solid var(--border-color);
+    padding: 0;
+}
+.send-message-form .card-header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 12px 18px 10px 18px;
+    background: none;
+    border-bottom: 1px solid var(--border-color);
+}
+.send-message-form .card-header h3 {
+    font-size: 16px;
+    font-weight: 600;
+    color: var(--text-primary);
+}
+.send-message-form .card-content {
+    padding: 18px;
+}
+.send-message-form .input {
+    border-radius: 6px;
+    border: 1px solid var(--border-color);
+    padding: 8px 12px;
+    font-size: 14px;
+    background: var(--surface-color);
+    color: var(--text-primary);
+    transition: border-color 0.2s;
+}
+.send-message-form .input:focus {
+    border-color: var(--primary-color);
+    outline: none;
+}
+.send-message-form button {
+    border-radius: 6px;
+    font-size: 14px;
+    padding: 8px 18px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background 0.2s;
+}
+.send-message-form .form-tip {
+    margin-top: 10px;
+    color: var(--text-secondary);
+    font-size: 12px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+</style>
+{% endblock %}

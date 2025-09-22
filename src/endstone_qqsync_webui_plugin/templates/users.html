@@ -1,0 +1,1029 @@
+{% extends "base.html" %}
+
+{% block nav_users %}nav-item-active{% endblock %}
+{% block page_title %}用户管理{% endblock %}
+
+{% block content %}
+<div class="users-container">
+    <!-- 用户统计 -->
+    <div class="stats-grid">
+        <div class="stat-card">
+            <div class="stat-icon">
+                <i class="win-icon win-icon-People"></i>
+            </div>
+            <div class="stat-content">
+                <h3 id="totalUsers">0</h3>
+                <p>总用户数</p>
+            </div>
+        </div>
+        
+        <div class="stat-card">
+            <div class="stat-icon">
+                <i class="win-icon win-icon-StatusCircleRing"></i>
+            </div>
+            <div class="stat-content">
+                <h3 id="onlineUsers">0</h3>
+                <p>在线用户</p>
+            </div>
+        </div>
+        
+        <div class="stat-card">
+            <div class="stat-icon">
+                <i class="win-icon win-icon-Link"></i>
+            </div>
+            <div class="stat-content">
+                <h3 id="boundUsers">0</h3>
+                <p>已绑定QQ</p>
+            </div>
+        </div>
+        
+        <div class="stat-card">
+            <div class="stat-icon">
+                <i class="win-icon win-icon-Warning"></i>
+            </div>
+            <div class="stat-content">
+                <h3 id="unboundUsers">0</h3>
+                <p>未绑定QQ</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- 用户列表 -->
+    <div class="card">
+        <div class="card-header">
+            <i class="win-icon win-icon-People"></i>
+            <h3>用户列表</h3>
+            <div class="header-actions">
+                <input type="text" id="searchInput" placeholder="搜索用户..." class="search-input">
+                <button class="button button-primary" onclick="refreshUsers()">
+                    <i class="win-icon win-icon-Refresh"></i>
+                    刷新
+                </button>
+                <button class="button button-secondary" onclick="exportUsers()">
+                    <i class="win-icon win-icon-Download"></i>
+                    导出
+                </button>
+            </div>
+        </div>
+        <div class="card-content">
+            <div class="table-container">
+                <table class="user-table">
+                    <thead>
+                        <tr>
+                            <th>玩家名称</th>
+                            <th>XUID</th>
+                            <th>QQ号码</th>
+                            <th>绑定时间</th>
+                            <th>游戏时长</th>
+                            <th>会话次数</th>
+                            <th>状态</th>
+                            <th>操作</th>
+                        </tr>
+                    </thead>
+                    <tbody id="userTableBody">
+                        <!-- 用户数据将在这里动态加载 -->
+                    </tbody>
+                </table>
+            </div>
+            
+            <!-- 空状态 -->
+            <div id="emptyState" class="empty-state" style="display: none;">
+                <i class="win-icon win-icon-People"></i>
+                <h3>暂无用户数据</h3>
+                <p>还没有用户绑定QQ，或者数据正在加载中</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 用户详情模态框 -->
+<div id="userModal" class="modal" style="display: none;">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h3>用户详情</h3>
+            <button class="modal-close" onclick="closeUserModal()">
+                <i class="win-icon win-icon-Cancel"></i>
+            </button>
+        </div>
+        <div class="modal-body">
+            <div class="user-detail">
+                <div class="user-avatar">
+                    <div class="avatar-placeholder-large"></div>
+                </div>
+                <div class="user-info">
+                    <h4 id="modalPlayerName">玩家名称</h4>
+                    <p id="modalQQInfo">QQ信息</p>
+                </div>
+            </div>
+            
+            <div class="detail-tabs">
+                <button class="tab-button active" onclick="showTab('basic')">基本信息</button>
+            </div>
+            
+            <div id="basicTab" class="tab-content">
+                <div class="info-grid">
+                    <div class="info-item">
+                        <span class="info-label">玩家名称:</span>
+                        <span class="info-value" id="detailPlayerName">-</span>
+                    </div>
+                    <div class="info-item">
+                        <span class="info-label">XUID:</span>
+                        <span class="info-value xuid-value" id="detailXUID">-</span>
+                    </div>
+                    <div class="info-item">
+                        <span class="info-label">QQ号码:</span>
+                        <span class="info-value" id="detailQQNumber">-</span>
+                    </div>
+                    <div class="info-item">
+                        <span class="info-label">绑定时间:</span>
+                        <span class="info-value" id="detailBindTime">-</span>
+                    </div>
+                    <div class="info-item">
+                        <span class="info-label">重绑时间:</span>
+                        <span class="info-value" id="detailRebindTime">-</span>
+                    </div>
+                    <div class="info-item">
+                        <span class="info-label">游戏时长:</span>
+                        <span class="info-value" id="detailPlaytime">-</span>
+                    </div>
+                    <div class="info-item">
+                        <span class="info-label">登录次数:</span>
+                        <span class="info-value" id="detailSessionCount">-</span>
+                    </div>
+                    <div class="info-item">
+                        <span class="info-label">封禁状态:</span>
+                        <span class="info-value" id="detailBanStatus">-</span>
+                    </div>
+                    <div class="info-item">
+                        <span class="info-label">最后登录:</span>
+                        <span class="info-value" id="detailLastJoin">-</span>
+                    </div>
+                    <div class="info-item">
+                        <span class="info-label">最后离开:</span>
+                        <span class="info-value" id="detailLastQuit">-</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="modal-footer">
+            <button class="button button-danger" onclick="banUser()" id="banButton" style="display: none;">
+                <i class="win-icon win-icon-Delete"></i>
+                封禁
+            </button>
+            <button class="button button-success" onclick="unbanUser()" id="unbanButton" style="display: none;">
+                <i class="win-icon win-icon-Delete"></i>
+                解封
+            </button>
+            <button class="button button-secondary" onclick="closeUserModal()">
+                关闭
+            </button>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+let allUsers = [];
+let currentUser = null;
+
+// 页面加载时获取用户数据
+document.addEventListener('DOMContentLoaded', function() {
+    loadUsers();
+    setupSearch();
+});
+
+async function loadUsers() {
+    try {
+        const response = await fetch('/api/users');
+        const data = await response.json();
+        
+        allUsers = data.users || [];
+        updateUserStats();
+        renderUserTable();
+        
+    } catch (error) {
+        showNotification('加载用户数据失败', 'error');
+        showEmptyState();
+    }
+}
+
+function updateUserStats() {
+    const totalUsers = allUsers.length;
+    const onlineUsers = allUsers.filter(user => user.is_online).length;
+    const boundUsers = allUsers.filter(user => user.qq_number).length;
+    const unboundUsers = totalUsers - boundUsers;
+    
+    document.getElementById('totalUsers').textContent = totalUsers;
+    document.getElementById('onlineUsers').textContent = onlineUsers;
+    document.getElementById('boundUsers').textContent = boundUsers;
+    document.getElementById('unboundUsers').textContent = unboundUsers;
+}
+
+function renderUserTable(users = null) {
+    const tbody = document.getElementById('userTableBody');
+    const emptyState = document.getElementById('emptyState');
+    const usersToShow = users || allUsers;
+    
+    if (usersToShow.length === 0) {
+        showEmptyState();
+        return;
+    }
+    
+    emptyState.style.display = 'none';
+    tbody.innerHTML = usersToShow.map(user => `
+        <tr>
+            <td>
+                <div class="user-cell">
+                    <div class="user-avatar-small avatar-placeholder"></div>
+                    <span class="user-name">${user.player_name}</span>
+                </div>
+            </td>
+            <td class="xuid-cell">${user.xuid || '-'}</td>
+            <td>${user.qq_number || user.qq || '-'}</td>
+            <td>${user.bind_time ? formatTime(user.bind_time) : '-'}</td>
+            <td>${formatPlaytime(user.total_playtime || 0)}</td>
+            <td>${user.session_count || 0}</td>
+            <td>
+                <div class="status-container">
+                    <span class="status-badge status-${user.is_online ? 'online' : 'offline'}">
+                        ${user.is_online ? '在线' : '离线'}
+                    </span>
+                    ${user.is_banned ? '<span class="status-badge status-banned">已封禁</span>' : ''}
+                </div>
+            </td>
+            <td>
+                <div class="action-buttons">
+                    <button class="action-button" onclick="showUserDetail('${user.player_name}')" title="查看详情">
+                        <i class="win-icon win-icon-View"></i>
+                    </button>
+                    ${user.qq_number || user.qq ? `
+                        <button class="action-button action-danger" onclick="confirmUnbind('${user.player_name}')" title="解除绑定">
+                            <i class="win-icon win-icon-Delete"></i>
+                        </button>
+                    ` : ''}
+                </div>
+            </td>
+        </tr>
+    `).join('');
+}
+
+function showEmptyState() {
+    document.getElementById('userTableBody').innerHTML = '';
+    document.getElementById('emptyState').style.display = 'block';
+}
+
+function setupSearch() {
+    const searchInput = document.getElementById('searchInput');
+    let searchTimeout;
+    
+    searchInput.addEventListener('input', function() {
+        clearTimeout(searchTimeout);
+        searchTimeout = setTimeout(() => {
+            const query = this.value.toLowerCase().trim();
+            
+            if (!query) {
+                renderUserTable();
+                return;
+            }
+            
+            const filteredUsers = allUsers.filter(user => 
+                user.player_name.toLowerCase().includes(query) ||
+                (user.qq_number && user.qq_number.includes(query))
+            );
+            
+            renderUserTable(filteredUsers);
+        }, 300);
+    });
+}
+
+function refreshUsers() {
+    showNotification('正在刷新用户数据...', 'info', 1000);
+    loadUsers();
+}
+
+function exportUsers() {
+    // CSV转义函数
+    function escapeCSVField(field) {
+        if (field == null) return '';
+        const stringField = String(field);
+        // 如果字段包含逗号、引号或换行符，需要用引号包围并转义内部的引号
+        if (stringField.includes(',') || stringField.includes('"') || stringField.includes('\n')) {
+            return '"' + stringField.replace(/"/g, '""') + '"';
+        }
+        return stringField;
+    }
+
+    const csvContent = [
+        ['玩家名称', 'QQ号码', '绑定时间', '在线状态'],
+        ...allUsers.map(user => [
+            user.player_name,
+            user.qq_number || '',
+            user.bind_time ? formatTime(user.bind_time) : '',
+            user.is_online ? '在线' : '离线'
+        ])
+    ].map(row => row.map(escapeCSVField).join(',')).join('\n');
+
+    // 添加UTF-8 BOM以确保正确的中文显示
+    const BOM = '\ufeff';
+    const csvWithBOM = BOM + csvContent;
+
+    const blob = new Blob([csvWithBOM], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    link.href = URL.createObjectURL(blob);
+    link.download = 'qqsync_users.csv';
+    link.click();
+
+    showNotification('用户数据已导出', 'success');
+}
+
+function showUserDetail(playerName) {
+    const user = allUsers.find(u => u.player_name === playerName);
+    if (!user) return;
+    
+    currentUser = user;
+    
+    // 填充模态框数据
+    document.getElementById('modalPlayerName').textContent = user.player_name;
+    document.getElementById('modalQQInfo').textContent = user.qq_number  || '未绑定QQ';
+    
+    // 基本信息
+    document.getElementById('detailPlayerName').textContent = user.player_name;
+    document.getElementById('detailXUID').textContent = user.xuid || '-';
+    document.getElementById('detailQQNumber').textContent = user.qq_number || user.qq || '-';
+    document.getElementById('detailBindTime').textContent = user.bind_time ? formatTime(user.bind_time) : '-';
+    document.getElementById('detailRebindTime').textContent = user.rebind_time ? formatTime(user.rebind_time) : '-';
+    document.getElementById('detailPlaytime').textContent = formatPlaytime(user.total_playtime || 0);
+    document.getElementById('detailSessionCount').textContent = user.session_count || 0;
+    
+    // 封禁状态
+    const banStatus = user.is_banned ? 
+        `已封禁 (${user.ban_reason || '无原因'})` : 
+        (user.unban_time ? '已解封' : '正常');
+    document.getElementById('detailBanStatus').textContent = banStatus;
+    
+    document.getElementById('detailLastJoin').textContent = user.last_join_time ? formatTime(user.last_join_time) : '-';
+    document.getElementById('detailLastQuit').textContent = user.last_quit_time ? formatTime(user.last_quit_time) : '-';
+    
+    // 控制封禁/解封按钮显示
+    updateBanButtons(user);
+    
+    // 显示模态框
+    document.getElementById('userModal').style.display = 'block';
+    showTab('basic');
+}
+
+function closeUserModal() {
+    document.getElementById('userModal').style.display = 'none';
+    currentUser = null;
+}
+
+function showTab(tabName) {
+    // 隐藏所有标签页
+    document.querySelectorAll('.tab-content').forEach(tab => {
+        tab.style.display = 'none';
+    });
+    
+    // 移除所有活动状态
+    document.querySelectorAll('.tab-button').forEach(btn => {
+        btn.classList.remove('active');
+    });
+    
+    // 显示选中的标签页
+    document.getElementById(tabName + 'Tab').style.display = 'block';
+    event.target.classList.add('active');
+}
+
+function confirmUnbind(playerName) {
+    const user = allUsers.find(u => u.player_name === playerName);
+    if (!user || !user.qq_number) return;
+    
+    if (confirm(`确定要解除 ${playerName} 的QQ绑定吗？\n\nQQ: ${user.qq_number}`)) {
+        unbindUserByName(playerName);
+    }
+}
+
+async function unbindUserByName(playerName) {
+    try {
+        const response = await fetch(`/api/users/${playerName}/unbind`, {
+            method: 'POST'
+        });
+        
+        const result = await response.json();
+        
+        if (result.success) {
+            showNotification('绑定已解除', 'success');
+            loadUsers(); // 重新加载用户列表
+            closeUserModal();
+        } else {
+            showNotification('解除绑定失败: ' + result.error, 'error');
+        }
+        
+    } catch (error) {
+        showNotification('解除绑定失败', 'error');
+    }
+}
+
+function unbindUser() {
+    if (currentUser) {
+        confirmUnbind(currentUser.player_name);
+    }
+}
+
+function updateBanButtons(user) {
+    const banButton = document.getElementById('banButton');
+    const unbanButton = document.getElementById('unbanButton');
+    
+    if (user.is_banned) {
+        banButton.style.display = 'none';
+        unbanButton.style.display = 'inline-block';
+    } else {
+        banButton.style.display = 'inline-block';
+        unbanButton.style.display = 'none';
+    }
+}
+
+async function banUser() {
+    if (!currentUser) return;
+    
+    const reason = prompt('请输入封禁原因（可选）：');
+    if (reason === null) return; // 用户取消
+    
+    try {
+        const response = await fetch(`/api/users/${encodeURIComponent(currentUser.player_name)}/ban`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                reason: reason || '管理员封禁'
+            })
+        });
+
+        showNotification('用户已封禁', 'success');
+        loadUsers(); // 重新加载用户列表
+        // 重新显示用户详情以更新按钮状态
+        showUserDetail(currentUser.player_name);
+        
+    } catch (error) {
+        showNotification('封禁失败', 'error');
+    }
+}
+
+async function unbanUser() {
+    if (!currentUser) return;
+    
+    if (!confirm(`确定要解封用户 ${currentUser.player_name} 吗？`)) {
+        return;
+    }
+    
+    try {
+        const response = await fetch(`/api/users/${encodeURIComponent(currentUser.player_name)}/unban`, {
+            method: 'POST'
+        });
+
+        showNotification('用户已解封', 'success');
+        loadUsers(); // 重新加载用户列表
+        // 重新显示用户详情以更新按钮状态
+        showUserDetail(currentUser.player_name);
+        
+    } catch (error) {
+        showNotification('解封失败', 'error');
+    }
+}
+
+function formatTime(timestamp) {
+    if (typeof timestamp === 'string') {
+        return timestamp;
+    }
+    return new Date(timestamp * 1000).toLocaleString('zh-CN');
+}
+
+function formatPlaytime(milliseconds) {
+    if (!milliseconds || milliseconds === 0) {
+        return '0分钟';
+    }
+    
+    const totalSeconds = Math.floor(milliseconds / 1000);
+    const hours = Math.floor(totalSeconds / 3600);
+    const minutes = Math.floor((totalSeconds % 3600) / 60);
+    
+    if (hours > 0) {
+        return `${hours}小时${minutes}分钟`;
+    } else {
+        return `${minutes}分钟`;
+    }
+}
+
+// 点击模态框外部关闭
+document.getElementById('userModal').addEventListener('click', function(e) {
+    if (e.target === this) {
+        closeUserModal();
+    }
+});
+</script>
+
+<style>
+.users-container {
+    max-width: 1200px;
+    margin: 0 auto;
+    display: flex;
+    flex-direction: column;
+    gap: 24px;
+}
+
+.stats-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 20px;
+}
+
+.stat-card {
+    background: var(--surface-color);
+    border-radius: 8px;
+    padding: 20px;
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    border: 1px solid var(--border-color);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.stat-icon {
+    width: 48px;
+    height: 48px;
+    border-radius: 50%;
+    background: var(--primary-color);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    font-size: 20px;
+}
+
+.stat-content h3 {
+    margin: 0 0 4px 0;
+    font-size: 24px;
+    font-weight: 700;
+    color: var(--text-primary);
+}
+
+.stat-content p {
+    margin: 0;
+    color: var(--text-secondary);
+    font-size: 14px;
+}
+
+.header-actions {
+    display: flex;
+    gap: 12px;
+    align-items: center;
+}
+
+.search-input {
+    padding: 8px 12px;
+    border: 1px solid var(--border-color);
+    border-radius: 4px;
+    background: var(--surface-color);
+    color: var(--text-primary);
+    font-size: 14px;
+    width: 200px;
+}
+
+.table-container {
+    overflow-x: auto;
+}
+
+.user-table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+.user-table th,
+.user-table td {
+    padding: 12px 16px;
+    text-align: left;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.user-table th {
+    background: rgba(0, 0, 0, 0.02);
+    font-weight: 600;
+    color: var(--text-primary);
+}
+
+.user-cell {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.user-avatar-small {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    object-fit: cover;
+}
+
+.user-name {
+    font-weight: 500;
+    color: var(--text-primary);
+}
+
+.status-badge {
+    padding: 4px 8px;
+    border-radius: 12px;
+    font-size: 12px;
+    font-weight: 500;
+}
+
+.status-online {
+    background: rgba(16, 124, 16, 0.1);
+    color: var(--success-color);
+}
+
+.status-offline {
+    background: rgba(128, 128, 128, 0.1);
+    color: #666;
+}
+
+.action-buttons {
+    display: flex;
+    gap: 8px;
+}
+
+.action-button {
+    width: 32px;
+    height: 32px;
+    border: none;
+    border-radius: 4px;
+    background: var(--border-color);
+    color: var(--text-secondary);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s ease;
+}
+
+.action-button:hover {
+    background: var(--primary-color);
+    color: white;
+}
+
+.action-danger:hover {
+    background: var(--error-color);
+}
+
+.xuid-cell {
+    font-family: 'Courier New', monospace;
+    font-size: 12px;
+    color: var(--text-secondary);
+    max-width: 150px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.status-container {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.status-badge {
+    display: inline-block;
+    padding: 4px 8px;
+    border-radius: 12px;
+    font-size: 12px;
+    font-weight: 500;
+    text-align: center;
+}
+
+.status-online {
+    background: rgba(46, 160, 67, 0.1);
+    color: #2ea043;
+}
+
+.status-offline {
+    background: rgba(101, 109, 118, 0.1);
+    color: #656d76;
+}
+
+.status-banned {
+    background: rgba(218, 54, 51, 0.1);
+    color: #da3633;
+}
+
+.xuid-value {
+    font-family: 'Courier New', monospace;
+    font-size: 12px;
+    color: var(--text-secondary);
+    word-break: break-all;
+}
+
+.empty-state {
+    text-align: center;
+    padding: 60px 20px;
+    color: var(--text-secondary);
+}
+
+.empty-state i {
+    font-size: 48px;
+    margin-bottom: 16px;
+    opacity: 0.5;
+}
+
+.empty-state h3 {
+    margin: 0 0 8px 0;
+    color: var(--text-primary);
+}
+
+.empty-state p {
+    margin: 0;
+}
+
+/* 模态框样式 */
+.modal {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.5);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 3000;
+    padding: 20px;
+    box-sizing: border-box;
+}
+
+.modal-content {
+    background: var(--surface-color);
+    border-radius: 8px;
+    width: 100%;
+    max-width: 600px;
+    max-height: calc(100vh - 40px);
+    overflow-y: auto;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+    margin: auto;
+    position: relative;
+}
+
+.modal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 20px 24px;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.modal-header h3 {
+    margin: 0;
+    color: var(--text-primary);
+}
+
+.modal-close {
+    background: none;
+    border: none;
+    font-size: 16px;
+    cursor: pointer;
+    color: var(--text-secondary);
+    padding: 4px;
+    border-radius: 4px;
+}
+
+.modal-close:hover {
+    background: rgba(0, 0, 0, 0.1);
+}
+
+.modal-body {
+    padding: 24px;
+}
+
+.modal-footer {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 12px;
+    padding: 16px 24px;
+    border-top: 1px solid var(--border-color);
+    background: rgba(0, 0, 0, 0.02);
+}
+
+.modal-actions-left {
+    display: flex;
+    gap: 8px;
+}
+
+.modal-actions-right {
+    display: flex;
+    gap: 12px;
+}
+
+.user-detail {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    margin-bottom: 24px;
+}
+
+.user-avatar {
+    width: 64px;
+    height: 64px;
+    border-radius: 50%;
+    overflow: hidden;
+}
+
+.user-avatar img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.user-info h4 {
+    margin: 0 0 4px 0;
+    color: var(--text-primary);
+}
+
+.user-info p {
+    margin: 0;
+    color: var(--text-secondary);
+}
+
+.detail-tabs {
+    display: flex;
+    border-bottom: 1px solid var(--border-color);
+    margin-bottom: 20px;
+}
+
+.tab-button {
+    padding: 12px 16px;
+    border: none;
+    background: none;
+    color: var(--text-secondary);
+    cursor: pointer;
+    border-bottom: 2px solid transparent;
+    transition: all 0.2s ease;
+}
+
+.tab-button.active {
+    color: var(--primary-color);
+    border-bottom-color: var(--primary-color);
+}
+
+.tab-content {
+    min-height: 100px;
+}
+
+.info-grid {
+    display: grid;
+    gap: 16px;
+}
+
+.info-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 12px 0;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.info-item:last-child {
+    border-bottom: none;
+}
+
+.info-label {
+    font-weight: 500;
+    color: var(--text-secondary);
+}
+
+.info-value {
+    color: var(--text-primary);
+}
+
+.button-danger {
+    background-color: var(--error-color);
+    color: white;
+}
+
+.button-danger:hover {
+    background-color: #b71c1c;
+}
+
+.button-warning {
+    background-color: #ff9800;
+    color: white;
+}
+
+.button-warning:hover {
+    background-color: #e68900;
+}
+
+.button-success {
+    background-color: var(--success-color);
+    color: white;
+}
+
+.button-success:hover {
+    background-color: #2e7d32;
+}
+
+/* 加载和错误状态 */
+.loading-indicator,
+.error-message {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 40px 20px;
+    color: var(--text-secondary);
+    text-align: center;
+}
+
+.loading-indicator i {
+    font-size: 24px;
+    margin-bottom: 8px;
+    animation: spin 1s linear infinite;
+}
+
+.error-message {
+    color: var(--error-color);
+}
+
+.error-message i {
+    font-size: 24px;
+    margin-bottom: 8px;
+}
+
+@keyframes spin {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
+}
+
+/* 响应式设计 - 确保模态框在不同设备上都能居中 */
+@media (max-width: 768px) {
+    .modal {
+        padding: 10px;
+    }
+    
+    .modal-content {
+        max-height: calc(100vh - 20px);
+        border-radius: 6px;
+    }
+    
+    .modal-header {
+        padding: 16px 20px;
+    }
+    
+    .modal-body {
+        padding: 20px;
+    }
+    
+    .modal-footer {
+        padding: 12px 20px;
+        flex-direction: column;
+        align-items: stretch;
+        gap: 12px;
+    }
+    
+    .modal-actions-left,
+    .modal-actions-right {
+        justify-content: center;
+    }
+}
+
+@media (max-width: 480px) {
+    .modal {
+        padding: 5px;
+    }
+    
+    .modal-content {
+        max-height: calc(100vh - 10px);
+        border-radius: 4px;
+    }
+    
+    .modal-header {
+        padding: 12px 16px;
+    }
+    
+    .modal-body {
+        padding: 16px;
+    }
+    
+    .modal-footer {
+        padding: 10px 16px;
+        flex-direction: column;
+        align-items: stretch;
+        gap: 10px;
+    }
+    
+    .modal-actions-left,
+    .modal-actions-right {
+        justify-content: center;
+        flex-wrap: wrap;
+    }
+}
+</style>
+{% endblock %}

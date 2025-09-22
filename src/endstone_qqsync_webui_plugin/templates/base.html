@@ -1,0 +1,240 @@
+<!DOCTYPE html>
+<html lang="zh-CN" data-theme="light">
+
+<head>
+    <meta charset="UTF-8">
+    <link rel="icon" type="image/x-icon" href="/static/img/favicon.ico">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}QQsync插件管理界面{% endblock %}</title>
+
+    <!-- Windows UI CSS Framework -->
+    <link href="/static/css/app-config.css" rel="stylesheet">
+    <link href="/static/css/windows-ui.min.css" rel="stylesheet">
+
+    <!-- Windows UI Icons -->
+    <link href="/static/css/winui-icons.min.css" rel="stylesheet">
+
+    <!-- 自定义样式 -->
+    <link rel="stylesheet" href="/static/css/custom.css">
+
+    {% block head %}{% endblock %}
+</head>
+
+<body>
+    <!-- 主导航栏 -->
+    <nav class="nav-bar">
+        <div class="nav-logo">
+            <img src="/static/img/msfxp.png" alt="logo"
+                style="width:32px;height:32px;object-fit:contain;border-radius:8px;box-shadow:0 2px 8px rgba(0,0,0,0.08);margin-right:10px;vertical-align:middle;">
+            <span class="nav-title">QQsync 管理面板</span>
+        </div>
+        <div class="nav-items desktop-nav">
+            <a href="/" class="nav-item {% block nav_dashboard %}{% endblock %}"><i
+                    class="win-icon win-icon-Home"></i>仪表盘</a>
+            <a href="/config" class="nav-item {% block nav_config %}{% endblock %}"><i
+                    class="win-icon win-icon-Settings"></i>配置管理</a>
+            <a href="/users" class="nav-item {% block nav_users %}{% endblock %}"><i
+                    class="win-icon win-icon-People"></i>用户管理</a>
+        </div>
+        <div class="nav-actions">
+            <button class="nav-action" onclick="toggleTheme()"><i class="win-icon win-icon-Brightness"></i></button>
+            <button class="nav-action" onclick="showAbout()"><i class="win-icon win-icon-Info"></i></button>
+            <button class="nav-action mobile-menu-btn" onclick="toggleMobileNav()" style="display:none;">
+                <i class="icons10-align-justify" style="font-size:28px;color:var(--primary-color,#0078d4);"></i>
+            </button>
+        </div>
+    </nav>
+    <!-- 手机侧边导航栏 -->
+    <div id="mobileNav" class="mobile-nav-overlay">
+        <div class="mobile-nav-panel">
+            <div class="mobile-nav-header">
+                <img src="/static/img/msfxp.png" alt="logo"
+                    style="width:32px;height:32px;object-fit:contain;border-radius:8px;box-shadow:0 2px 8px rgba(0,0,0,0.08);margin-right:10px;vertical-align:middle;">
+                <span class="nav-title">QQsync 管理面板</span>
+                <button class="nav-action" onclick="toggleMobileNav()" style="margin-left:auto;">
+                    <i class="icons10-cross" style="font-size:28px;color:var(--primary-color,#0078d4);"></i>
+                </button>
+            </div>
+            <div class="mobile-nav-items">
+                <a href="/" class="nav-item"><i class="win-icon win-icon-Home"></i>仪表盘</a>
+                <a href="/config" class="nav-item"><i class="win-icon win-icon-Settings"></i>配置管理</a>
+                <a href="/users" class="nav-item"><i class="win-icon win-icon-People"></i>用户管理</a>
+            </div>
+        </div>
+    </div>
+
+    <!-- 页面容器 -->
+    <div class="page-container" style="margin-top: -16px; padding-top: 0;">
+        <div class="page-header">
+            <h1 class="page-title">{% block page_title %}仪表板{% endblock %}</h1>
+            <div class="page-actions">
+                {% block page_actions %}{% endblock %}
+            </div>
+        </div>
+        <!-- 主要内容区域 -->
+        <main class="main-content">
+            {% block content %}{% endblock %}
+        </main>
+    </div>
+
+    <div class="app-navbar-wrap" style="display:none;">
+        <nav></nav>
+        <div id="app-navbar-list"></div>
+        <div class="app-navbar-header"></div>
+    </div>
+
+    <!-- Windows UI JavaScript -->
+    <script src="/static/js/windows-ui.min.js"></script>
+    <script src="/static/js/chart.js"></script>
+    <script src="/static/js/main.js"></script>
+    <script>
+        // 手机导航栏切换
+        function toggleMobileNav() {
+            var nav = document.getElementById('mobileNav');
+            if (nav.classList.contains('show')) {
+                nav.classList.remove('show');
+                document.body.style.overflow = '';
+            } else {
+                nav.classList.add('show');
+                document.body.style.overflow = 'hidden';
+            }
+        }
+        // 响应式显示菜单按钮
+        function updateMobileMenuBtn() {
+            var btn = document.querySelector('.mobile-menu-btn');
+            if (window.innerWidth <= 900) {
+                btn.style.display = '';
+            } else {
+                btn.style.display = 'none';
+                document.getElementById('mobileNav').classList.remove('show');
+                document.body.style.overflow = '';
+            }
+        }
+        window.addEventListener('resize', updateMobileMenuBtn);
+        window.addEventListener('DOMContentLoaded', updateMobileMenuBtn);
+    </script>
+    <style>
+        /* 手机导航栏呼出按钮绝对定位右上角 */
+        .mobile-menu-btn {
+            position: fixed !important;
+            top: 12px;
+            right: 16px;
+            z-index: 10001;
+            background: none;
+            border: none;
+            box-shadow: none;
+            padding: 0;
+            margin: 0;
+        }
+
+        /* 手机侧边导航栏样式 */
+        .mobile-nav-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.18);
+            z-index: 9999;
+            display: none;
+            transition: opacity 0.2s;
+        }
+
+        .mobile-nav-overlay.show {
+            display: block;
+            opacity: 1;
+        }
+
+        .mobile-nav-panel {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 80vw;
+            max-width: 320px;
+            height: 100vh;
+            background: var(--surface-color, #fff);
+            box-shadow: 2px 0 16px rgba(0, 0, 0, 0.12);
+            border-radius: 0 12px 12px 0;
+            display: flex;
+            flex-direction: column;
+            animation: slideInNav 0.22s cubic-bezier(.4, 0, .2, 1);
+        }
+
+        @keyframes slideInNav {
+            from {
+                transform: translateX(-100%);
+            }
+
+            to {
+                transform: translateX(0);
+            }
+        }
+
+        .mobile-nav-header {
+            display: flex;
+            align-items: center;
+            padding: 18px 16px 12px 16px;
+            border-bottom: 1px solid var(--border-color, #eee);
+            background: none;
+        }
+
+        .mobile-nav-header .nav-action {
+            background: none;
+            border: none;
+            color: var(--primary-color, #0078d4);
+            font-size: 22px;
+            cursor: pointer;
+            padding: 6px 10px;
+            border-radius: 6px;
+            transition: background 0.18s;
+        }
+
+        .mobile-nav-header .nav-action:hover {
+            background: var(--primary-color, #e6f2ff);
+            color: var(--primary-color, #0078d4);
+        }
+
+        .mobile-nav-items {
+            display: flex;
+            flex-direction: column;
+            gap: 2px;
+            padding: 18px 0 0 0;
+        }
+
+        .mobile-nav-items .nav-item {
+            padding: 14px 24px;
+            font-size: 16px;
+            color: var(--text-primary, #222);
+            border-radius: 0 8px 8px 0;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-weight: 500;
+            transition: background 0.18s;
+        }
+
+        .mobile-nav-items .nav-item:hover {
+            background: var(--primary-color, #e6f2ff);
+            color: var(--primary-color, #0078d4);
+        }
+
+        @media (max-width: 900px) {
+            .desktop-nav {
+                display: none !important;
+            }
+
+            .mobile-menu-btn {
+                display: inline-flex !important;
+            }
+        }
+
+        @media (min-width: 901px) {
+            .mobile-nav-overlay {
+                display: none !important;
+            }
+        }
+    </style>
+    {% block scripts %}{% endblock %}
+</body>
+
+</html>
