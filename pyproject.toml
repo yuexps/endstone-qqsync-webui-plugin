@@ -6,6 +6,7 @@ build-backend = "hatchling.build"
 name = "endstone-qqsync-webui-plugin"
 version = "0.0.1"
 description = "QQsync WebUI 拓展"
+readme = "README.md"
 authors = [
     { name = "yuexps", email = "yuexps@qq.com" },
 ]
