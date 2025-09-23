@@ -2,6 +2,8 @@
 
 为 [endstone-qqsync-plugin](https://github.com/yuexps/endstone-qqsync-plugin) 提供 Web 管理界面的扩展插件。
 
+警告：为了安全，请勿暴露到公网环境！如需公网访问，建议自己反代设置密码！
+
 ## 功能特性
 
 - 🌐 **Web 管理界面** - 基于现代化 UI 的管理面板
